@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "133894196998",
+    "project_id": "camions-9050e",
+    "storage_bucket": "camions-9050e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:133894196998:android:eaf129ef2aa13a462d9887",
+        "android_client_info": {
+          "package_name": "com.fleetguard.fleetguard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq3irhos0_xeKY-x5_phwtf2vVrv-NoLg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
