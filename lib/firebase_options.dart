@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '133894196998',
     projectId: 'camions-9050e',
     storageBucket: 'camions-9050e.firebasestorage.app',
-    iosBundleId: 'android',
+    iosBundleId: 'com.fleetguard.fleetguard',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

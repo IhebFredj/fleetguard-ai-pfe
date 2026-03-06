@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:fleetguard/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,13 +17,28 @@ Future<void> requestBluetoothPermissions() async {
       Permission.locationWhenInUse,
     ]);
   }
-  await reqs.request();
+
+  // ignore: avoid_print
+  print('>>> MAIN: Requesting permissions at startup...');
+  final statuses = await reqs.request();
+
+  for (final entry in statuses.entries) {
+    // ignore: avoid_print
+    print('>>> MAIN: ${entry.key} = ${entry.value}');
+  }
+
+  final allGranted = statuses.values.every((s) => s.isGranted || s.isLimited);
+  // ignore: avoid_print
+  print('>>> MAIN: All permissions granted = $allGranted');
 }
 
-Future<void> main(dynamic Firebase) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Demander les permissions au démarrage
   await requestBluetoothPermissions();
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

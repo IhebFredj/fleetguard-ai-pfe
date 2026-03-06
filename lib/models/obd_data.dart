@@ -1,10 +1,10 @@
-
 class OBDData {
   final int rpm;
   final double engineTempC;
   final double speedKmh;
   final double oilPressureBar;
-  final int fuelLevelPercent;
+  final int?
+  fuelLevelPercent; // Nullable: null = non disponible, 0 = réservoir vide
   final double instantConsumptionLPer100;
   final double distanceKm;
   final List<String> dtcCodes;
@@ -52,17 +52,17 @@ class OBDData {
   });
 
   factory OBDData.initial() => OBDData(
-        rpm: 0,
-        engineTempC: 0,
-        speedKmh: 0,
-        oilPressureBar: 0,
-        fuelLevelPercent: 0,
-        instantConsumptionLPer100: 0,
-        distanceKm: 0,
-        dtcCodes: const [],
-        engineOk: true,
-        timestamp: DateTime.now(),
-      );
+    rpm: 0,
+    engineTempC: 0,
+    speedKmh: 0,
+    oilPressureBar: 0,
+    fuelLevelPercent: null, // Non disponible par défaut jusqu'à lecture OBD
+    instantConsumptionLPer100: 0,
+    distanceKm: 0,
+    dtcCodes: const [],
+    engineOk: true,
+    timestamp: DateTime.now(),
+  );
 
   OBDData copyWith({
     int? rpm,
@@ -118,29 +118,29 @@ class OBDData {
   }
 
   Map<String, dynamic> toJson({required String camionId}) => {
-        'camion': camionId,
-        'rpm': rpm,
-        'temperature': engineTempC.round(),
-        'vitesse': speedKmh.round(),
-        'carburant': fuelLevelPercent,
-        'pression_huile_bar': oilPressureBar,
-        'conso_l_100': instantConsumptionLPer100,
-        'distance_km': distanceKm,
-        'dtc': dtcCodes,
-        'status_ok': engineOk,
-        'timestamp': timestamp.toUtc().toIso8601String(),
-        if (odometerKm != null) 'odometer_km': odometerKm,
-        if (engineLoadPct != null) 'engine_load_pct': engineLoadPct,
-        if (fuelPressureKpa != null) 'fuel_pressure_kpa': fuelPressureKpa,
-        if (mapKpa != null) 'map_kpa': mapKpa,
-        if (iatC != null) 'iat_c': iatC,
-        if (tpsPct != null) 'tps_pct': tpsPct,
-        if (runTimeSec != null) 'run_time_sec': runTimeSec,
-        if (distanceSinceDtcKm != null) 'dist_since_dtc_km': distanceSinceDtcKm,
-        if (fuelType != null) 'fuel_type': fuelType,
-        if (oilTempC != null) 'oil_temp_c': oilTempC,
-        if (fuelRateLh != null) 'fuel_rate_lh': fuelRateLh,
-        if (fuelTempC != null) 'fuel_temp_c': fuelTempC,
-        if (mafGps != null) 'maf_gps': mafGps,
-      };
+    'camion': camionId,
+    'rpm': rpm,
+    'temperature': engineTempC.round(),
+    'vitesse': speedKmh.round(),
+    'carburant': fuelLevelPercent,
+    'pression_huile_bar': oilPressureBar,
+    'conso_l_100': instantConsumptionLPer100,
+    'distance_km': distanceKm,
+    'dtc': dtcCodes,
+    'status_ok': engineOk,
+    'timestamp': timestamp.toUtc().toIso8601String(),
+    if (odometerKm != null) 'odometer_km': odometerKm,
+    if (engineLoadPct != null) 'engine_load_pct': engineLoadPct,
+    if (fuelPressureKpa != null) 'fuel_pressure_kpa': fuelPressureKpa,
+    if (mapKpa != null) 'map_kpa': mapKpa,
+    if (iatC != null) 'iat_c': iatC,
+    if (tpsPct != null) 'tps_pct': tpsPct,
+    if (runTimeSec != null) 'run_time_sec': runTimeSec,
+    if (distanceSinceDtcKm != null) 'dist_since_dtc_km': distanceSinceDtcKm,
+    if (fuelType != null) 'fuel_type': fuelType,
+    if (oilTempC != null) 'oil_temp_c': oilTempC,
+    if (fuelRateLh != null) 'fuel_rate_lh': fuelRateLh,
+    if (fuelTempC != null) 'fuel_temp_c': fuelTempC,
+    if (mafGps != null) 'maf_gps': mafGps,
+  };
 }

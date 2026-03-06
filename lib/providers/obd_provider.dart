@@ -8,7 +8,9 @@ import 'package:http/http.dart' as http;
 import 'package:fleetguard/models/obd_data.dart';
 import 'package:fleetguard/services/obd_service.dart';
 
-final obdProvider = NotifierProvider<OBDController, OBDState>(OBDController.new);
+final obdProvider = NotifierProvider<OBDController, OBDState>(
+  OBDController.new,
+);
 
 class OBDState {
   final bool isScanning;
@@ -50,14 +52,14 @@ class OBDState {
   }
 
   factory OBDState.initial() => OBDState(
-        isScanning: false,
-        isConnected: false,
-        connectedAddress: null,
-        data: OBDData.initial(),
-        rpmSeries: const [],
-        speedSeries: const [],
-        statusMessage: '',
-      );
+    isScanning: false,
+    isConnected: false,
+    connectedAddress: null,
+    data: OBDData.initial(),
+    rpmSeries: const [],
+    speedSeries: const [],
+    statusMessage: '',
+  );
 }
 
 class OBDChartPoint {
@@ -71,53 +73,96 @@ class OBDController extends Notifier<OBDState> {
   Timer? _pollTimer;
   DateTime? _lastTick;
   double _odometerAccumKm = 0.0;
-  
+  // Pour estimation du niveau de carburant quand PID 012F non supporté
+  double _totalFuelConsumedLiters = 0.0;
+  double? _initialFuelLevelPercent;
+  static const double _defaultTankCapacityLiters =
+      60.0; // Capacité par défaut si non configurée
+
   Future<bool> _ensureRuntimePermissions() async {
+    // ignore: avoid_print
+    print('>>> _ensureRuntimePermissions: START');
+
     final reqs = <Permission>[];
     if (Platform.isIOS) {
-      // iOS flows through CoreBluetooth; permission_handler exposes bluetooth
-      reqs.add(Permission.bluetooth);
-      // Some iOS stacks still require location for BLE background/scan reliability
-      reqs.add(Permission.locationWhenInUse);
+      reqs.addAll([Permission.bluetooth, Permission.locationWhenInUse]);
     } else {
-      // Android: request runtime perms for 12+, and location for legacy discovery
       reqs.addAll([
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
         Permission.locationWhenInUse,
       ]);
     }
+
+    // Vérifier d'abord le statut actuel de chaque permission
+    final Map<Permission, PermissionStatus> currentStatuses = {};
+    for (final perm in reqs) {
+      final status = await perm.status;
+      currentStatuses[perm] = status;
+      // ignore: avoid_print
+      print('>>> Permission ${perm.toString()}: status = ${status.toString()}');
+    }
+
+    // Vérifier si toutes sont déjà accordées
+    final allGranted = currentStatuses.values.every(
+      (s) => s.isGranted || s.isLimited,
+    );
+    if (allGranted) {
+      // ignore: avoid_print
+      print('>>> _ensureRuntimePermissions: all permissions already granted');
+      return true;
+    }
+
+    // Demander les permissions qui ne sont pas accordées
+    // ignore: avoid_print
+    print('>>> _ensureRuntimePermissions: requesting permissions...');
     final statuses = await reqs.request();
+
     bool ok = true;
     bool permanentlyDenied = false;
-    for (final s in statuses.values) {
-      if (s.isPermanentlyDenied) {
+    for (final entry in statuses.entries) {
+      final perm = entry.key;
+      final status = entry.value;
+      // ignore: avoid_print
+      print('>>> After request - ${perm.toString()}: ${status.toString()}');
+
+      if (status.isPermanentlyDenied) {
         permanentlyDenied = true;
         ok = false;
-      } else if (!(s.isGranted || s.isLimited)) {
+      } else if (!(status.isGranted || status.isLimited)) {
         ok = false;
       }
     }
-    // Some Android devices still require Location service enabled for BLE/classic discovery
+
+    // Vérifier le service de localisation sur Android (seulement si pas refus permanent)
     if (!permanentlyDenied && Platform.isAndroid) {
       final locService = await Permission.location.serviceStatus;
+      // ignore: avoid_print
+      print('>>> Location service status: ${locService.toString()}');
       if (!locService.isEnabled) {
         ok = false;
-        state = state.copyWith(statusMessage: 'Service de localisation désactivé. Activez la localisation du téléphone pour autoriser la découverte Bluetooth.');
+        state = state.copyWith(
+          statusMessage:
+              'Service de localisation désactivé. Activez la localisation du téléphone.',
+        );
       }
     }
+
     if (!ok) {
-      state = state.copyWith(statusMessage: permanentlyDenied
-          ? 'Permissions Bluetooth refusées de manière permanente. Ouvrez les paramètres pour les activer.'
+      final msg = permanentlyDenied
+          ? 'Permissions refusées. Allez dans Paramètres > Applications > Fleetguard > Permissions pour activer Bluetooth et Localisation.'
           : (Platform.isAndroid
-              ? 'Permissions Bluetooth/Localisation refusées. Autorisez "Appareils à proximité" et "Localisation".'
-              : 'Permissions Bluetooth/Localisation refusées'));
+                ? 'Permissions Bluetooth/Localisation requises. Vérifiez les paramètres de l\'app.'
+                : 'Permissions Bluetooth requises');
+      state = state.copyWith(statusMessage: msg);
       if (permanentlyDenied) {
-        // Tente d'ouvrir les paramètres de l'application
-        // ignore: unawaited_futures
+        // ignore: avoid_print, unawaited_futures
         openAppSettings();
       }
     }
+
+    // ignore: avoid_print
+    print('>>> _ensureRuntimePermissions: result = $ok');
     return ok;
   }
 
@@ -129,7 +174,10 @@ class OBDController extends Notifier<OBDState> {
   }
 
   Future<List<Map<String, String>>> listBonded() async {
-    state = state.copyWith(isScanning: true, statusMessage: 'Activation Bluetooth...');
+    state = state.copyWith(
+      isScanning: true,
+      statusMessage: 'Activation Bluetooth...',
+    );
     try {
       // ignore: avoid_print
       print('>>> listBonded() called');
@@ -150,18 +198,24 @@ class OBDController extends Notifier<OBDState> {
       // Classic bonded devices
       final classic = await _service.getBondedDevices();
       final classicMaps = classic
-          .map((d) => {
-                'name': d.name ?? d.address,
-                'address': 'classic:${d.address}',
-              })
+          .map(
+            (d) => {
+              'name': d.name ?? d.address,
+              'address': 'classic:${d.address}',
+            },
+          )
           .toList();
       // BLE scan (short window)
-      final bleResults = await _service.scanBle(timeout: const Duration(seconds: 4));
+      final bleResults = await _service.scanBle(
+        timeout: const Duration(seconds: 4),
+      );
       final bleMaps = bleResults
-          .map((m) => {
-                'name': m['name'] ?? m['id'] ?? 'BLE Device',
-                'address': 'ble:${m['id']}',
-              })
+          .map(
+            (m) => {
+              'name': m['name'] ?? m['id'] ?? 'BLE Device',
+              'address': 'ble:${m['id']}',
+            },
+          )
           .toList();
       // Merge, classic first, then BLE; de-dup by address
       final merged = <String, Map<String, String>>{};
@@ -212,7 +266,8 @@ class OBDController extends Notifier<OBDState> {
       if (!ecuOk) {
         await _service.disconnect();
         state = state.copyWith(
-          statusMessage: 'ECU non détectée. Vérifiez le contact, le branchement OBD2 et l\'adaptateur.',
+          statusMessage:
+              'ECU non détectée. Vérifiez le contact, le branchement OBD2 et l\'adaptateur.',
           isConnected: false,
           connectedAddress: null,
         );
@@ -229,7 +284,10 @@ class OBDController extends Notifier<OBDState> {
       print('>>> connectTo: CONNECTED');
       _startPolling();
     } catch (e) {
-      state = state.copyWith(statusMessage: 'Erreur connexion: $e', isScanning: false);
+      state = state.copyWith(
+        statusMessage: 'Erreur connexion: $e',
+        isScanning: false,
+      );
       // ignore: avoid_print
       print('>>> connectTo: exception: $e');
     } finally {
@@ -260,10 +318,24 @@ class OBDController extends Notifier<OBDState> {
       final spdRead = await _service.readSpeedKmh();
       final tempRead = await _service.readEngineTempC();
       final fuelRead = await _service.readFuelLevelPercent();
+
+      // Si PID 012F non supporté, estimer basé sur la consommation cumulée
+      int? fuel = fuelRead;
+      if (fuel == null && _initialFuelLevelPercent != null) {
+        // Estimer le niveau restant
+        final tankCapacity = _defaultTankCapacityLiters;
+        final initialLiters = (_initialFuelLevelPercent! / 100) * tankCapacity;
+        final remainingLiters = initialLiters - _totalFuelConsumedLiters;
+        fuel = ((remainingLiters / tankCapacity) * 100).round().clamp(0, 100);
+        // ignore: avoid_print
+        print(
+          '>>> FUEL ESTIMATE: $fuel% (consumed: ${_totalFuelConsumedLiters.toStringAsFixed(2)}L, initial: $_initialFuelLevelPercent%)',
+        );
+      }
+
       final rpm = rpmRead ?? state.data.rpm;
       final spd = spdRead ?? state.data.speedKmh;
       final temp = tempRead ?? state.data.engineTempC;
-      final fuel = fuelRead ?? state.data.fuelLevelPercent;
       // Oil pressure and consumption not standard on all PIDs, simulate for now
       final oil = (1.5 + (rpm / 6000)).clamp(0, 6).toDouble();
       // Try to compute fuel rate L/h from PID 015E; fallback via MAF if available.
@@ -282,7 +354,8 @@ class OBDController extends Notifier<OBDState> {
       }
       final consoPrev = state.data.instantConsumptionLPer100;
       final conso = (spd > 0)
-          ? ((fuelRateLh ?? (consoPrev * spd / 100)).clamp(0, 50.0)) * (100 / spd)
+          ? ((fuelRateLh ?? (consoPrev * spd / 100)).clamp(0, 50.0)) *
+                (100 / spd)
           : consoPrev;
 
       // Extended sensors
@@ -298,6 +371,14 @@ class OBDController extends Notifier<OBDState> {
       final fuelTemp = await _service.readFuelTemp015F();
 
       final now = DateTime.now();
+
+      // Accumuler la consommation pour estimation du niveau de carburant
+      if (fuelRateLh != null && _lastTick != null) {
+        final dtSec = now.difference(_lastTick!).inMilliseconds / 1000.0;
+        final consumedLiters = (fuelRateLh * dtSec) / 3600.0;
+        _totalFuelConsumedLiters += consumedLiters;
+      }
+
       // Odometer: try PID 01A6; if null, integrate speed over time
       final odoPid = await _service.readOdometer01A6();
       if (odoPid != null) {
@@ -362,7 +443,23 @@ class OBDController extends Notifier<OBDState> {
 
   Future<void> sendToServer(String camionId, Uri endpoint) async {
     final payload = state.data.toJson(camionId: camionId);
-    await http.post(endpoint, headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+    await http.post(
+      endpoint,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+  }
+
+  /// Définir le niveau initial de carburant pour estimation (quand PID 012F non supporté)
+  void setInitialFuelLevel(int percent) {
+    _initialFuelLevelPercent = percent.clamp(0, 100).toDouble();
+    _totalFuelConsumedLiters = 0.0; // Reset la consommation cumulée
+    state = state.copyWith(
+      statusMessage: 'Niveau carburant initial: $percent%. Estimation activée.',
+      data: state.data.copyWith(fuelLevelPercent: percent),
+    );
+    // ignore: avoid_print
+    print('>>> FUEL: Initial level set to $percent%, consumption reset');
   }
 
   Future<void> startDemo() async {
@@ -374,7 +471,7 @@ class OBDController extends Notifier<OBDState> {
       final rpm = 800 + rng.nextInt(2500);
       final spd = rng.nextInt(90).toDouble();
       final temp = 70 + rng.nextInt(35);
-      final fuel = max(0, state.data.fuelLevelPercent - rng.nextInt(2));
+      final fuel = max(0, (state.data.fuelLevelPercent ?? 50) - rng.nextInt(2));
       final oil = 1.2 + rng.nextDouble() * 1.2;
       final conso = 6 + rng.nextDouble() * 8;
       final newData = state.data.copyWith(

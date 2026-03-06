@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/presentation/login_page.dart';
 import '../core/auth.dart';
+import '../core/auth_state.dart';
 import '../app_shell.dart';
 import '../driver_shell.dart';
 
@@ -9,55 +11,27 @@ class AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
     final role = ref.watch(roleProvider);
 
+    // Show loading while checking auth state
+    if (authState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    // Redirect to login if not authenticated
+    if (!authState.isAuthenticated) {
+      return const LoginPage();
+    }
+
+    // Route based on user role
     switch (role) {
       case UserRole.admin:
         return const AppShell();
       case UserRole.driver:
         return const DriverShell();
       case UserRole.none:
-        return _RolePicker();
+        return const LoginPage();
     }
-  }
-}
-
-class _RolePicker extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Choisir un rôle')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Sélection temporaire du rôle pour la démo.\nRemplacer par une vraie authentification plus tard.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => ref.read(roleProvider.notifier).state = UserRole.admin,
-                    icon: const Icon(Icons.admin_panel_settings),
-                    label: const Text('Administrateur'),
-                  ),
-                  const SizedBox(width: 16),
-                  OutlinedButton.icon(
-                    onPressed: () => ref.read(roleProvider.notifier).state = UserRole.driver,
-                    icon: const Icon(Icons.local_shipping),
-                    label: const Text('Chauffeur'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

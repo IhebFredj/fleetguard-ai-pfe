@@ -12,7 +12,20 @@
           "package_name": "com.fleetguard.fleetguard"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "133894196998-7ibtb3j5g130tv3dgvj98csq8lkd5mkr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fleetguard.fleetguard",
+            "certificate_hash": "a22b561cf08c38afeadcfb6ba4a95fed3b4dfa49"
+          }
+        },
+        {
+          "client_id": "133894196998-fvgpatsma849lu4cb242kunabq333bnh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDq3irhos0_xeKY-x5_phwtf2vVrv-NoLg"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "133894196998-fvgpatsma849lu4cb242kunabq333bnh.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "133894196998-94h45ae9744ecr60h0lrmf485stt7qeg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fleetguard.fleetguard"
+              }
+            }
+          ]
         }
       }
     }

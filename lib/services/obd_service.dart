@@ -23,7 +23,9 @@ class OBDService {
     // Try classic first
     final enabledClassic = await isEnabled;
     // BLE state (cannot programmatically enable on Android >= 13)
-    final isBleOn = await ble.FlutterBluePlus.adapterState.first.then((s) => s == ble.BluetoothAdapterState.on);
+    final isBleOn = await ble.FlutterBluePlus.adapterState.first.then(
+      (s) => s == ble.BluetoothAdapterState.on,
+    );
     if (enabledClassic || isBleOn) return true;
     final res = await _bluetooth.requestEnable();
     return (res ?? false) || isBleOn;
@@ -46,8 +48,11 @@ class OBDService {
     final sw = Stopwatch()..start();
     StreamSubscription? sub;
     void cancel() {
-      try { sub?.cancel(); } catch (_) {}
+      try {
+        sub?.cancel();
+      } catch (_) {}
     }
+
     if (_connection != null && _connection!.isConnected) {
       final src = _classicInput ?? _connection!.input!.asBroadcastStream();
       sub = src.listen((_) {});
@@ -70,7 +75,9 @@ class OBDService {
   }
 
   /// Scan for BLE devices for a short period and return name/id pairs
-  Future<List<Map<String, String>>> scanBle({Duration timeout = const Duration(seconds: 4)}) async {
+  Future<List<Map<String, String>>> scanBle({
+    Duration timeout = const Duration(seconds: 4),
+  }) async {
     final results = <Map<String, String>>[];
     final seen = <String>{};
     await ble.FlutterBluePlus.startScan(timeout: timeout);
@@ -85,8 +92,8 @@ class OBDService {
         final name = d.platformName.isNotEmpty
             ? d.platformName
             : (localName.isNotEmpty
-                ? localName
-                : (advName.isNotEmpty ? advName : ''));
+                  ? localName
+                  : (advName.isNotEmpty ? advName : ''));
         seen.add(id);
         results.add({'name': name.isNotEmpty ? name : id, 'id': id});
       }
@@ -139,9 +146,18 @@ class OBDService {
       await _request('ATL0', timeout: const Duration(seconds: 3));
       await _request('ATH0', timeout: const Duration(seconds: 3));
       await _request('ATS0', timeout: const Duration(seconds: 3));
-      await _request('ATAT1', timeout: const Duration(seconds: 3)); // adaptive timing on
-      await _request('ATSTFF', timeout: const Duration(seconds: 3)); // max timeout
-      await _request('ATSP0', timeout: const Duration(seconds: 4)); // auto protocol
+      await _request(
+        'ATAT1',
+        timeout: const Duration(seconds: 3),
+      ); // adaptive timing on
+      await _request(
+        'ATSTFF',
+        timeout: const Duration(seconds: 3),
+      ); // max timeout
+      await _request(
+        'ATSP0',
+        timeout: const Duration(seconds: 4),
+      ); // auto protocol
       // Identify adapter (optional but useful)
       await identifyAdapter();
     } catch (e) {
@@ -160,7 +176,9 @@ class OBDService {
     // First try with current settings (likely after ATSP0)
     if (await _probeHeadersAndHandshake()) {
       // Use functional addressing for subsequent reads
-      try { await _setHeader('7DF'); } catch (_) {}
+      try {
+        await _setHeader('7DF');
+      } catch (_) {}
       return true;
     }
     // Probe common protocols (CAN first), then ISO/KWP
@@ -171,7 +189,9 @@ class OBDService {
         print('>>> ELM: try protocol ATSP$p');
         await _setProtocol(p);
         if (await _probeHeadersAndHandshake()) {
-          try { await _setHeader('7DF'); } catch (_) {}
+          try {
+            await _setHeader('7DF');
+          } catch (_) {}
           return true;
         }
       } catch (e) {
@@ -202,19 +222,25 @@ class OBDService {
       final dpn = await _request('ATDPN', timeout: const Duration(seconds: 3));
       final dp = await _request('ATDP', timeout: const Duration(seconds: 3));
       // ignore: avoid_print
-      print('>>> ELM: active protocol: ${dpn.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()} | ${dp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}');
+      print(
+        '>>> ELM: active protocol: ${dpn.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()} | ${dp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}',
+      );
     } catch (_) {}
   }
 
   Future<bool> _handshakeOnce() async {
     String resp = await _request('0100', timeout: const Duration(seconds: 12));
     // ignore: avoid_print
-    print('>>> ELM: 0100 resp: ${resp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}');
+    print(
+      '>>> ELM: 0100 resp: ${resp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}',
+    );
     if (_validateResponse(resp)) return true;
     await Future.delayed(const Duration(milliseconds: 300));
     resp = await _request('0100', timeout: const Duration(seconds: 12));
     // ignore: avoid_print
-    print('>>> ELM: 0100 retry resp: ${resp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}');
+    print(
+      '>>> ELM: 0100 retry resp: ${resp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}',
+    );
     return _validateResponse(resp);
   }
 
@@ -258,17 +284,26 @@ class OBDService {
     _classicInput = _connection!.input!.asBroadcastStream();
   }
 
-  static final _uuidNusService = ble.Guid("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+  static final _uuidNusService = ble.Guid(
+    "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+  );
   static final _uuidNusWrite = ble.Guid("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
-  static final _uuidNusNotify = ble.Guid("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
-  static final _uuidHmxService = ble.Guid("0000FFE0-0000-1000-8000-00805F9B34FB");
+  static final _uuidNusNotify = ble.Guid(
+    "6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
+  );
+  static final _uuidHmxService = ble.Guid(
+    "0000FFE0-0000-1000-8000-00805F9B34FB",
+  );
   static final _uuidHmxChar = ble.Guid("0000FFE1-0000-1000-8000-00805F9B34FB");
 
   Future<void> _connectBle(String deviceId) async {
     // find device in current scan cache, else create from id
     final dev = ble.BluetoothDevice.fromId(deviceId);
     _bleDevice = dev;
-    await dev.connect(timeout: const Duration(seconds: 8)).onError((e, _) async {
+    await dev.connect(timeout: const Duration(seconds: 8)).onError((
+      e,
+      _,
+    ) async {
       // ignore if already connected
     });
     final services = await dev.discoverServices();
@@ -315,7 +350,9 @@ class OBDService {
     _bleInput = null;
   }
 
-  bool get isConnected => (_connection?.isConnected ?? false) || (_bleDevice != null && _bleWrite != null && _bleNotify != null);
+  bool get isConnected =>
+      (_connection?.isConnected ?? false) ||
+      (_bleDevice != null && _bleWrite != null && _bleNotify != null);
 
   Future<void> _write(String cmd) async {
     final data = utf8.encode('$cmd\r');
@@ -331,7 +368,10 @@ class OBDService {
     throw StateError('Bluetooth not connected');
   }
 
-  Future<String> _request(String cmd, {Duration timeout = const Duration(seconds: 4)}) async {
+  Future<String> _request(
+    String cmd, {
+    Duration timeout = const Duration(seconds: 4),
+  }) async {
     // Drain any residual bytes from previous commands
     await _drainInput(const Duration(milliseconds: 40));
     // Slightly longer gap to avoid overrunning slow ECUs/adapters
@@ -353,14 +393,18 @@ class OBDService {
         try {
           chunk = utf8.decode(sanitized, allowMalformed: true);
         } catch (_) {
-          chunk = String.fromCharCodes(sanitized.map((b) => b < 128 ? b : 0x3F)); // replace non-ascii with '?'
+          chunk = String.fromCharCodes(
+            sanitized.map((b) => b < 128 ? b : 0x3F),
+          ); // replace non-ascii with '?'
         }
         buffer.write(chunk);
         if (buffer.toString().contains('>')) {
           sub?.cancel();
           final resp = buffer.toString();
           // ignore: avoid_print
-          print('>>> $cmd: ${resp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}');
+          print(
+            '>>> $cmd: ${resp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}',
+          );
           completer.complete(resp);
         }
       });
@@ -372,7 +416,9 @@ class OBDService {
         try {
           chunk = utf8.decode(sanitized, allowMalformed: true);
         } catch (_) {
-          chunk = String.fromCharCodes(sanitized.map((b) => b < 128 ? b : 0x3F));
+          chunk = String.fromCharCodes(
+            sanitized.map((b) => b < 128 ? b : 0x3F),
+          );
         }
         buffer.write(chunk);
         if (buffer.toString().contains('>')) {
@@ -386,10 +432,13 @@ class OBDService {
       throw StateError('Bluetooth not connected');
     }
 
-    return completer.future.timeout(timeout, onTimeout: () {
-      sub?.cancel();
-      return buffer.toString();
-    });
+    return completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        sub?.cancel();
+        return buffer.toString();
+      },
+    );
   }
 
   // Helpers to parse OBD-II PIDs
@@ -521,7 +570,7 @@ class OBDService {
     final resp = await _request('015E');
     final hex = _extractHex(resp);
     final data = _getMode01Data(hex, '5E', 2);
-    if (data.length == 2) return ((data[0] * 256) + data[1]) / 20.0; // L/h 
+    if (data.length == 2) return ((data[0] * 256) + data[1]) / 20.0; // L/h
     return null;
   }
 
@@ -539,18 +588,57 @@ class OBDService {
     final hex = _extractHex(resp);
     final data = _getMode01Data(hex, 'A6', 4);
     if (data.length == 4) {
-      final value = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
+      final value =
+          (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
       return value.toDouble();
     }
     return null;
   }
 
   Future<int?> readFuelLevelPercent() async {
+    // Vérifier d'abord si le PID 2F est supporté
+    final supported = await getSupportedPids();
+    if (!supported.contains('2F')) {
+      // ignore: avoid_print
+      print('>>> OBD: PID 012F not in supported PIDs list: $supported');
+      return null;
+    }
+
+    // ignore: avoid_print
+    print('>>> OBD: Reading fuel level (PID 012F)...');
     final resp = await _request('012F');
+    // ignore: avoid_print
+    print(
+      '>>> OBD: Fuel level response: ${resp.replaceAll('\r', ' ').replaceAll('\n', ' ').trim()}',
+    );
     final hex = _extractHex(resp);
+    // ignore: avoid_print
+    print('>>> OBD: Fuel level hex: $hex');
     final data = _getMode01Data(hex, '2F', 1);
-    if (data.length == 1) return ((100 * data[0]) / 255).round();
+    // ignore: avoid_print
+    print('>>> OBD: Fuel level data bytes: $data');
+    if (data.length == 1) {
+      final percent = ((100 * data[0]) / 255).round();
+      // ignore: avoid_print
+      print('>>> OBD: Fuel level calculated: $percent% (raw=${data[0]})');
+      return percent;
+    }
+    // ignore: avoid_print
+    print('>>> OBD: Fuel level PID 012F not supported or no data');
     return null;
+  }
+
+  /// Alternative: estimate fuel level based on consumption tracking
+  /// Requires initial fuel level to be set manually
+  Future<int?> estimateFuelLevelPercent({
+    required double tankCapacityLiters,
+    required double initialFuelLiters,
+    required double totalConsumedLiters,
+  }) async {
+    if (tankCapacityLiters <= 0) return null;
+    final remaining = initialFuelLiters - totalConsumedLiters;
+    final percent = ((remaining / tankCapacityLiters) * 100).round();
+    return percent.clamp(0, 100);
   }
 
   Future<List<String>> readDtcCodes() async {
@@ -583,7 +671,12 @@ class OBDService {
       if (p.isEmpty) continue;
       // ignore common non-hex noise
       if (p.startsWith('SEARCHING') || p == 'STOPPED') continue;
-      if (p == 'CAN' || p == 'ERROR' || p == 'BUS' || p == 'INIT' || p == 'NO' || p == 'DATA') {
+      if (p == 'CAN' ||
+          p == 'ERROR' ||
+          p == 'BUS' ||
+          p == 'INIT' ||
+          p == 'NO' ||
+          p == 'DATA') {
         // keep 'NO' 'DATA' as separate tokens for validation only
         if (p == 'NO' || p == 'DATA') out.add(p);
         continue;
