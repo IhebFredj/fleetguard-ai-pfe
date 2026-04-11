@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MAPBOX TOKEN -->
+    <!-- IMPORTANT: Remplace cette valeur par ton vrai token Mapbox en local -->
+    <!-- Ne JAMAIS commiter un vrai token ici -->
+    <string name="mapbox_access_token">YOUR_MAPBOX_ACCESS_TOKEN_HERE</string>
+</resources>

@@ -1,0 +1,11 @@
+Model Information:
+* title:	MAN TGX 2010 V8 – High-Detail Semi-Truck
+* source:	https://sketchfab.com/3d-models/man-tgx-2010-v8-high-detail-semi-truck-34ce748d9a4b4de7b035cfe5cb97f5d1
+* author:	DevPoly3D (https://sketchfab.com/DevPoly3D)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "MAN TGX 2010 V8 – High-Detail Semi-Truck" (https://sketchfab.com/3d-models/man-tgx-2010-v8-high-detail-semi-truck-34ce748d9a4b4de7b035cfe5cb97f5d1) by DevPoly3D (https://sketchfab.com/DevPoly3D) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

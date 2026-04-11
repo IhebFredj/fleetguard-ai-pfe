@@ -83,3 +83,11 @@ hs_err_pid19864.log
 hs_err_pid34272.log
 node_modules
 
+# Secrets & tokens - NE JAMAIS commiter ces fichiers
+# Remplace le token dans ce fichier en local après le clone
+# android/app/src/main/res/values/strings.xml
+
+# Logs crash JVM
+hs_err_pid*.log
+replay_pid*.log
+
